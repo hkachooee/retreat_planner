@@ -15,10 +15,11 @@ Web app where company teams vote on a retreat getaway, on the site or in a Teleg
 ## Data rules
 - One vote per Telegram user per retreat, on web or in the group. Voting again replaces the old vote.
 - A retreat is one voting round; its trips are the options people vote between.
-- Keys: `retreat:current` (id of the open round), `retreat:{id}` (hash: status open|closed), `trips:{retreatId}` (set of trip ids), `trip:{id}` (hash), `votes:{retreatId}` (hash userId → tripId), `count:{retreatId}` (hash tripId → number), `member:{userId}` ("yes" once confirmed)
+- Keys: `retreat:current` (id of the open round), `retreat:{id}` (hash: title, deadline, status open|closed), `trips:{retreatId}` (set of trip ids), `trip:{id}` (hash: place, date, days, price, details), `votes:{retreatId}` (hash userId → tripId), `count:{retreatId}` (hash tripId → number), `member:{userId}` ("yes" once confirmed), `user:{userId}:name` (admins only)
 - One Redis database serves every environment, so local and preview runs touch real data.
 - Update vote and count together in one transaction (`WATCH`/`MULTI` or a Lua script).
-- A trip has: place name, length of stay, trip date, price per person. Only admins create and edit trips.
+- A trip has: place name, trip date, days, price per person in euros, optional "includes" text. Only admins create and remove trips; a trip with votes can't be removed.
+- Voting closes at the deadline (set in Eastern time) or when an admin closes it.
 - Only company members can vote. Before a first vote the bot asks "Are you part of {COMPANY_NAME}?" and remembers the answer.
 - Votes are anonymous. Only admins can see who voted for what.
 - Only users in `ADMIN_TELEGRAM_IDS` can reach `/admin` or close voting.
