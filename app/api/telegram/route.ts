@@ -1,7 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
-import { deadlineLabel } from "@/lib/format";
+import { revalidatePath } from "next/cache";
+import { isAdmin } from "@/auth";
+import { days, deadlineLabel, euro, tripDate } from "@/lib/format";
+import { parseTripCommand, TRIP_USAGE } from "@/lib/trip-command";
 import { answerCallback, botStartLink, sendMessage, siteUrl, tg } from "@/lib/telegram";
 import {
+  addTrip,
   castVote,
   getCurrentRetreat,
   getTrip,
@@ -79,6 +83,11 @@ async function onMessage(msg: Message) {
     return;
   }
 
+  if (command === "/trip") {
+    await onTripCommand(msg, msg.from);
+    return;
+  }
+
   if (command === "/vote") {
     if (msg.chat.type === "private") {
       await sendMessage(msg.chat.id, "Send /vote in your team group.");
@@ -92,6 +101,37 @@ async function onMessage(msg: Message) {
     }
     await postVote(msg.chat.id);
   }
+}
+
+// "/trip name: Lisbon | date: 2026-12-05 | days: 4 | price: 650". Organizers only.
+async function onTripCommand(msg: Message, from: User) {
+  if (!isAdmin(from.id)) {
+    await sendMessage(msg.chat.id, "Only organizers can add trips.");
+    return;
+  }
+  const args = (msg.text ?? "").replace(/^\/trip(@\w+)?/, "").trim();
+  if (!args) {
+    await sendMessage(msg.chat.id, TRIP_USAGE);
+    return;
+  }
+  const retreat = await getCurrentRetreat();
+  if (!retreat) {
+    await sendMessage(msg.chat.id, "Create the retreat in Organizer on the web first.");
+    return;
+  }
+  const parsed = parseTripCommand(args);
+  if ("error" in parsed) {
+    await sendMessage(msg.chat.id, parsed.error);
+    return;
+  }
+  const { trip } = parsed;
+  await addTrip(retreat.id, trip);
+  revalidatePath("/", "layout");
+  await sendMessage(
+    msg.chat.id,
+    `Added ${trip.place}: ${tripDate(trip.date)} · ${days(trip.days)} · ${euro(trip.price)} per person.\nIt's now an option on the web and in /vote.`,
+    [[{ text: "See all trips ↗", url: `${siteUrl()}/trips` }]],
+  );
 }
 
 async function postVote(chatId: number) {

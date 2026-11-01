@@ -30,6 +30,8 @@ Web app where company teams browse retreat getaways on the site and vote in Tele
 - `/`, `/trips` and `/results` are public. Telegram sign-in on the web is only needed for `/admin`.
 - `/results` is public to anyone with the link. It is the only place results are shown.
 - Telegram: any company member can send `/vote`, which posts a message in the team group with one inline button per trip. Telegram never shows results; it links to `/results`.
+- Telegram: organizers (`ADMIN_TELEGRAM_IDS`) can send `/trip` with `name: … | date: YYYY-MM-DD | days: … | price: … | includes: …` (or one field per line) to add a trip to the current retreat. `npm run telegram:webhook` also sets the bot's command menu.
+- After a vote the bot says final results are up Friday at 5 pm EST.
 
 ## Design
 - Mobile first. Follow the wireframes in Figma: https://www.figma.com/design/ubAYfOAIwLUo4oHsfiWyvd/Retreat-Planner---Journey-Map---Wireframes
