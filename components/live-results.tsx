@@ -5,11 +5,13 @@ import type { Results } from "@/lib/results";
 
 const POLL_MS = 4000;
 
-export function LiveResults({ initial }: { initial: NonNullable<Results> }) {
+// poll={false} keeps the initial numbers (used by the demo page).
+export function LiveResults({ initial, poll = true }: { initial: NonNullable<Results>; poll?: boolean }) {
   const [results, setResults] = useState(initial);
   const [stale, setStale] = useState(false);
 
   useEffect(() => {
+    if (!poll) return;
     let active = true;
     const tick = async () => {
       if (document.hidden) return;
@@ -30,7 +32,7 @@ export function LiveResults({ initial }: { initial: NonNullable<Results> }) {
       active = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [poll]);
 
   const max = Math.max(1, ...results.trips.map((t) => t.votes));
   const leader = results.trips[0]?.votes ? results.trips[0].id : null;
@@ -57,7 +59,9 @@ export function LiveResults({ initial }: { initial: NonNullable<Results> }) {
               <div className="mb-1.5 flex items-baseline justify-between text-sm">
                 <span className="font-medium">
                   {t.place}
-                  {t.id === leader && <span className="ml-2 text-xs font-semibold text-accent">Leading</span>}
+                  {t.id === leader && (
+                    <span className="ml-2 text-xs font-semibold text-accent">{results.open ? "Leading" : "Winner"}</span>
+                  )}
                 </span>
                 <span className="tabular-nums text-muted">{t.votes}</span>
               </div>
