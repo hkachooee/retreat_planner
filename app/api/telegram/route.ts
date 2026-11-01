@@ -53,13 +53,22 @@ async function onMessage(msg: Message) {
   if (!msg.from) return;
 
   if (command === "/start" && msg.chat.type === "private") {
+    // "/start v_ab12cd34" comes from a trip's "Vote in Telegram" button on the web.
+    const payload = msg.text?.split(" ")[1] ?? "";
+    const tripId = payload.startsWith("v_") ? payload.slice(2) : "";
+
     if (await isMember(msg.from.id)) {
-      await sendMessage(msg.chat.id, "You're confirmed. Tap a trip in your team group to vote.");
+      const text = tripId
+        ? await recordVote(msg.from, tripId)
+        : "You're confirmed. Tap a trip in your team group to vote.";
+      await sendMessage(msg.chat.id, text);
       return;
     }
+    // Carry the trip through the membership question so the vote lands after "Yes".
+    const suffix = tripId ? `:${tripId}` : "";
     await sendMessage(msg.chat.id, `Are you part of ${company()}?`, [
       [
-        { text: "Yes", callback_data: "m:yes" },
+        { text: "Yes", callback_data: `m:yes${suffix}` },
         { text: "No", callback_data: "m:no" },
       ],
     ]);
@@ -108,8 +117,13 @@ async function onCallback(cb: CallbackQuery) {
   const [kind, a, b] = (cb.data ?? "").split(":");
 
   if (kind === "m") {
-    const answer = a === "yes" ? "Thanks, you can vote now. Head back to your team group." : `Only ${company()} members can vote.`;
     if (a === "yes") await setMember(cb.from.id);
+    const answer =
+      a !== "yes"
+        ? `Only ${company()} members can vote.`
+        : b
+          ? await recordVote(cb.from, b)
+          : "Thanks, you can vote now. Head back to your team group.";
     await answerCallback(cb.id, "");
     if (cb.message) {
       await tg("editMessageText", {
@@ -132,28 +146,31 @@ async function onCallback(cb: CallbackQuery) {
 async function onVote(cb: CallbackQuery, retreatId: string, tripId: string) {
   if (!(await isMember(cb.from.id))) {
     // Opens a private chat with the bot, which asks the membership question.
-    await answerCallback(cb.id, "", { url: botStartLink("join") });
+    await answerCallback(cb.id, "", { url: botStartLink(`v_${tripId}`) });
     return;
   }
 
   const retreat = await getCurrentRetreat();
-  if (!isVotingOpen(retreat) || retreat.id !== retreatId) {
+  if (retreat?.id !== retreatId) {
     await answerCallback(cb.id, "This vote is closed.", { alert: true });
     return;
   }
-  if (!(await isTripInRetreat(retreatId, tripId))) {
-    await answerCallback(cb.id, "That trip is no longer available.", { alert: true });
-    return;
-  }
+  await answerCallback(cb.id, await recordVote(cb.from, tripId));
+}
 
-  const result = await castVote(retreatId, cb.from.id, tripId);
-  await saveUserName(cb.from.id, cb.from.first_name);
+// Checks the round is open and the trip belongs to it, then casts the vote.
+// Returns the reply to show the voter. Callers check membership first.
+async function recordVote(from: User, tripId: string) {
+  const retreat = await getCurrentRetreat();
+  if (!isVotingOpen(retreat)) return "This vote is closed.";
+  if (!(await isTripInRetreat(retreat.id, tripId))) return "That trip is no longer available.";
+
+  const result = await castVote(retreat.id, from.id, tripId);
+  await saveUserName(from.id, from.first_name);
   const place = (await getTrip(tripId))?.place ?? "that trip";
-  const text =
-    result === "same"
-      ? `You already voted for ${place}.`
-      : result === "changed"
-        ? `Vote changed to ${place}.`
-        : `Vote saved: ${place}.`;
-  await answerCallback(cb.id, text);
+  return result === "same"
+    ? `You already voted for ${place}.`
+    : result === "changed"
+      ? `Vote changed to ${place}.`
+      : `Vote saved: ${place}.`;
 }

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { ButtonLink } from "@/components/ui";
 import { deadlineLabel } from "@/lib/format";
 import { telegramLoginUrl } from "@/lib/telegram-login";
 import { getCurrentRetreat, isVotingOpen } from "@/lib/votes";
@@ -17,10 +17,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/">) {
   const loginUrl = telegramLoginUrl(origin, `${origin}/auth/telegram`);
 
   const subtitle = !retreat
-    ? "Your organizer hasn't opened a vote yet. Sign in to be ready."
+    ? "Your organizer hasn't opened a vote yet. Check back soon."
     : isVotingOpen(retreat)
-      ? `Vote for where we go.${retreat.deadline ? ` Voting closes ${deadlineLabel(retreat.deadline)}.` : ""}`
-      : "Voting has closed. Sign in to see where we're going.";
+      ? `Browse the trips, then vote in Telegram.${retreat.deadline ? ` Voting closes ${deadlineLabel(retreat.deadline)}.` : ""}`
+      : "Voting has closed. See where we're going.";
 
   return (
     <main className="flex flex-1 flex-col py-6">
@@ -39,20 +39,19 @@ export default async function SignInPage({ searchParams }: PageProps<"/">) {
         </p>
       )}
 
-      <div className="mt-auto pt-10">
-        <a
-          href={loginUrl}
-          className="flex h-12 w-full items-center justify-center rounded-xl bg-ink text-sm font-semibold text-paper hover:bg-ink/90"
-        >
-          Continue with Telegram
-        </a>
+      <div className="mt-auto flex flex-col gap-2 pt-10">
+        <ButtonLink href="/trips">See the trips</ButtonLink>
+        <ButtonLink href="/results" variant="secondary">
+          Live results
+        </ButtonLink>
         <p className="mt-3 text-center text-xs text-muted">
           One vote per person · You can change it until voting closes
         </p>
-        <p className="mt-6 text-center text-xs">
-          <Link href="/results" className="text-muted underline underline-offset-2">
-            See live results
-          </Link>
+        <p className="mt-6 text-center text-xs text-muted">
+          Organizer?{" "}
+          <a href={loginUrl} className="underline underline-offset-2 hover:text-ink">
+            Sign in with Telegram
+          </a>
         </p>
       </div>
     </main>

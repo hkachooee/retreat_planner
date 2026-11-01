@@ -45,3 +45,6 @@ export function siteUrl() {
 export function botStartLink(payload: string) {
   return `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}?start=${payload}`;
 }
+
+// Opens a private chat with the bot that casts a vote for this trip.
+export const voteLink = (tripId: string) => botStartLink(`v_${tripId}`);

@@ -1,6 +1,6 @@
 ## Retreat planner instructions 
 
-Web app where company teams vote on a retreat getaway, on the site or in a Telegram group. English only.
+Web app where company teams browse retreat getaways on the site and vote in Telegram. English only.
 
 ## Stack
 - Next.js (App Router, TypeScript), Tailwind, deployed on Vercel (account `hkachooee-4983`, project `retreat_planner`)
@@ -13,7 +13,7 @@ Web app where company teams vote on a retreat getaway, on the site or in a Teleg
 `REDIS_URL` · `TELEGRAM_BOT_TOKEN` · `TELEGRAM_BOT_USERNAME` · `TELEGRAM_WEBHOOK_SECRET` · `AUTH_SECRET` · `ADMIN_TELEGRAM_IDS` (comma-separated numeric IDs) · `COMPANY_NAME`
 
 ## Data rules
-- One vote per Telegram user per retreat, on web or in the group. Voting again replaces the old vote.
+- One vote per Telegram user per retreat. Votes are cast only through the bot: a trip button in the group, or the web's "Vote in Telegram" link (`t.me/{bot}?start=v_{tripId}`). Voting again replaces the old vote.
 - A retreat is one voting round; its trips are the options people vote between.
 - Keys: `retreat:current` (id of the open round), `retreat:{id}` (hash: title, deadline, status open|closed), `trips:{retreatId}` (set of trip ids), `trip:{id}` (hash: place, date, days, price, details), `votes:{retreatId}` (hash userId → tripId), `count:{retreatId}` (hash tripId → number), `member:{userId}` ("yes" once confirmed), `user:{userId}:name` (admins only)
 - One Redis database serves every environment, so local and preview runs touch real data.
@@ -26,7 +26,8 @@ Web app where company teams vote on a retreat getaway, on the site or in a Teleg
 - Verify every webhook request with Telegram's secret token header.
 
 ## Screens
-`/` sign in · `/trips` list · `/trips/[id]` detail + vote · `/results` live bars · `/admin` organizer
+`/` home · `/trips` list · `/trips/[id]` detail + "Vote in Telegram" · `/results` live bars · `/admin` organizer
+- `/`, `/trips` and `/results` are public. Telegram sign-in on the web is only needed for `/admin`.
 - `/results` is public to anyone with the link. It is the only place results are shown.
 - Telegram: any company member can send `/vote`, which posts a message in the team group with one inline button per trip. Telegram never shows results; it links to `/results`.
 

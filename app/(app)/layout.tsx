@@ -4,7 +4,7 @@ import { BottomNav } from "@/components/bottom-nav";
 
 async function Nav() {
   const session = await auth();
-  return session ? <BottomNav isAdmin={session.user.isAdmin} /> : null;
+  return <BottomNav isAdmin={session?.user.isAdmin ?? false} />;
 }
 
 export default function AppLayout({ children }: LayoutProps<"/">) {

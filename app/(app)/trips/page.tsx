@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { signOutAction } from "@/app/actions";
 import { auth } from "@/auth";
-import { MembershipPrompt } from "@/components/membership-prompt";
 import { Card, Chip, Notice, PageHeader, PlaceTile } from "@/components/ui";
 import { days, euro, timeLeft, tripDate } from "@/lib/format";
-import { getCurrentRetreat, getTrips, getVoteFor, isMember, isVotingOpen } from "@/lib/votes";
+import { getCurrentRetreat, getTrips, getVoteFor, isVotingOpen } from "@/lib/votes";
 
 const FILTERS = [
   { key: "all", label: "All" },
@@ -15,8 +13,6 @@ const FILTERS = [
 
 export default async function TripsPage({ searchParams }: PageProps<"/trips">) {
   const session = await auth();
-  if (!session) redirect("/");
-  const userId = Number(session.user.id);
 
   const { filter = "all" } = await searchParams;
   const retreat = await getCurrentRetreat();
@@ -30,10 +26,9 @@ export default async function TripsPage({ searchParams }: PageProps<"/trips">) {
     );
   }
 
-  const [allTrips, myVote, member] = await Promise.all([
+  const [allTrips, myVote] = await Promise.all([
     getTrips(retreat.id),
-    getVoteFor(retreat.id, userId),
-    isMember(userId),
+    session ? getVoteFor(retreat.id, Number(session.user.id)) : null,
   ]);
   const trips = allTrips.filter((t) =>
     filter === "budget" ? t.price < 500 : filter === "short" ? t.days <= 3 : true,
@@ -48,12 +43,6 @@ export default async function TripsPage({ searchParams }: PageProps<"/trips">) {
         aside={left && <Chip active={open}>{left}</Chip>}
         sub={retreat.title}
       />
-
-      {!member && open && (
-        <div className="mb-4">
-          <MembershipPrompt company={process.env.COMPANY_NAME ?? "the company"} />
-        </div>
-      )}
 
       <nav aria-label="Filter trips" className="mb-4 flex gap-2">
         {FILTERS.map((f) => (
@@ -100,12 +89,14 @@ export default async function TripsPage({ searchParams }: PageProps<"/trips">) {
         </ul>
       )}
 
-      <form action={signOutAction} className="mt-8 text-center text-xs text-muted">
-        Signed in as {session.user.name} ·{" "}
-        <button type="submit" className="underline underline-offset-2 hover:text-ink">
-          Sign out
-        </button>
-      </form>
+      {session && (
+        <form action={signOutAction} className="mt-8 text-center text-xs text-muted">
+          Signed in as {session.user.name} ·{" "}
+          <button type="submit" className="underline underline-offset-2 hover:text-ink">
+            Sign out
+          </button>
+        </form>
+      )}
     </>
   );
 }
