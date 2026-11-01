@@ -20,4 +20,17 @@ const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
 });
 const data = await res.json();
 console.log(data.ok ? `Webhook set to ${base}/api/telegram` : `Failed: ${data.description}`);
-process.exit(data.ok ? 0 : 1);
+if (!data.ok) process.exit(1);
+
+// The command menu Telegram shows when someone types "/".
+const commands = await fetch(`https://api.telegram.org/bot${token}/setMyCommands`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    commands: [
+      { command: "vote", description: "Post the trip vote in this group" },
+      { command: "trip", description: "Organizers: add a trip (name, date, days, price)" },
+    ],
+  }),
+}).then((r) => r.json());
+console.log(commands.ok ? "Command menu updated" : `Commands failed: ${commands.description}`);
