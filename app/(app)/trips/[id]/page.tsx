@@ -1,33 +1,23 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { MembershipPrompt } from "@/components/membership-prompt";
-import { ButtonLink, Chip, PlaceTile } from "@/components/ui";
-import { VoteButton } from "@/components/vote-button";
+import { ButtonLink, Chip, PlaceTile, buttonStyles } from "@/components/ui";
 import { days, euro, tripDate } from "@/lib/format";
-import { getCurrentRetreat, getTrip, getVoteFor, isMember, isTripInRetreat, isVotingOpen } from "@/lib/votes";
+import { voteLink } from "@/lib/telegram";
+import { getCurrentRetreat, getTrip, getVoteFor, isTripInRetreat, isVotingOpen } from "@/lib/votes";
 
 export default async function TripDetailPage({ params }: PageProps<"/trips/[id]">) {
   const session = await auth();
-  if (!session) redirect("/");
-  const userId = Number(session.user.id);
   const { id } = await params;
 
   const retreat = await getCurrentRetreat();
   if (!retreat || !(await isTripInRetreat(retreat.id, id))) notFound();
-  const [trip, myVote, member] = await Promise.all([
+  const [trip, myVote] = await Promise.all([
     getTrip(id),
-    getVoteFor(retreat.id, userId),
-    isMember(userId),
+    session ? getVoteFor(retreat.id, Number(session.user.id)) : null,
   ]);
   if (!trip) notFound();
-
-  const company = process.env.COMPANY_NAME ?? "the company";
-  const disabledReason = !isVotingOpen(retreat)
-    ? "Voting has closed."
-    : !member
-      ? `Confirm you're part of ${company} above to vote.`
-      : undefined;
+  const open = isVotingOpen(retreat);
 
   return (
     <>
@@ -53,14 +43,18 @@ export default async function TripDetailPage({ params }: PageProps<"/trips/[id]"
         </p>
       </section>
 
-      {!member && isVotingOpen(retreat) && (
-        <div className="mt-6">
-          <MembershipPrompt company={company} />
-        </div>
-      )}
-
       <div className="mt-auto flex flex-col gap-2 pt-8">
-        <VoteButton tripId={trip.id} isMyVote={myVote === trip.id} disabledReason={disabledReason} />
+        {open ? (
+          <>
+            {/* Votes are cast by the bot, so the button opens Telegram. */}
+            <a href={voteLink(trip.id)} className={buttonStyles.accent}>
+              {myVote === trip.id ? "✓ Your vote · change in Telegram" : "Vote in Telegram"}
+            </a>
+            <p className="text-center text-sm text-muted">Opens a chat with our bot. One vote per person.</p>
+          </>
+        ) : (
+          <p className="text-center text-sm text-muted">Voting has closed.</p>
+        )}
         <ButtonLink href="/trips" variant="secondary">
           Compare trips
         </ButtonLink>
