@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { deadlineLabel } from "@/lib/format";
 import { answerCallback, botStartLink, sendMessage, siteUrl, tg } from "@/lib/telegram";
 import {
   castVote,
@@ -7,10 +8,12 @@ import {
   getTrips,
   isMember,
   isTripInRetreat,
+  isVotingOpen,
+  saveUserName,
   setMember,
 } from "@/lib/votes";
 
-type User = { id: number; first_name: string };
+type User = { id: number; first_name: string; last_name?: string };
 type Chat = { id: number; type: "private" | "group" | "supergroup" | "channel" };
 type Message = { message_id: number; chat: Chat; from?: User; text?: string };
 type CallbackQuery = { id: string; from: User; message?: Message; data?: string };
@@ -80,7 +83,7 @@ async function onMessage(msg: Message) {
 
 async function postVote(chatId: number) {
   const retreat = await getCurrentRetreat();
-  if (!retreat || retreat.status !== "open") {
+  if (!isVotingOpen(retreat)) {
     await sendMessage(chatId, "No vote is open right now.");
     return;
   }
@@ -89,18 +92,15 @@ async function postVote(chatId: number) {
     await sendMessage(chatId, "No trips have been added yet.");
     return;
   }
+  const closes = retreat.deadline ? `\nCloses ${deadlineLabel(retreat.deadline)}` : "";
+  const buttons = trips.map((t) => ({ text: t.place, callback_data: `v:${retreat.id}:${t.id}` }));
+  const rows = [];
+  for (let i = 0; i < buttons.length; i += 3) rows.push(buttons.slice(i, i + 3));
+
   await sendMessage(
     chatId,
-    "Where should we go? Tap a trip to vote.\nOne vote per person, and you can change it. Votes are anonymous.",
-    [
-      ...trips.map((t) => [
-        {
-          text: `${t.place} · ${t.date} · ${t.stay} · $${t.pricePerPerson}`,
-          callback_data: `v:${retreat.id}:${t.id}`,
-        },
-      ]),
-      [{ text: "See results", url: `${siteUrl()}/results` }],
-    ],
+    `${retreat.title}: where should we go?${closes}\nTap a trip to vote. You can change it anytime. Votes are anonymous.`,
+    [...rows, [{ text: "Open full details ↗", url: `${siteUrl()}/trips` }]],
   );
 }
 
@@ -137,7 +137,7 @@ async function onVote(cb: CallbackQuery, retreatId: string, tripId: string) {
   }
 
   const retreat = await getCurrentRetreat();
-  if (!retreat || retreat.id !== retreatId || retreat.status !== "open") {
+  if (!isVotingOpen(retreat) || retreat.id !== retreatId) {
     await answerCallback(cb.id, "This vote is closed.", { alert: true });
     return;
   }
@@ -147,6 +147,7 @@ async function onVote(cb: CallbackQuery, retreatId: string, tripId: string) {
   }
 
   const result = await castVote(retreatId, cb.from.id, tripId);
+  await saveUserName(cb.from.id, cb.from.first_name);
   const place = (await getTrip(tripId))?.place ?? "that trip";
   const text =
     result === "same"
