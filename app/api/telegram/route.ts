@@ -19,6 +19,9 @@ type Message = { message_id: number; chat: Chat; from?: User; text?: string };
 type CallbackQuery = { id: string; from: User; message?: Message; data?: string };
 type Update = { message?: Message; callback_query?: CallbackQuery };
 
+const RESULTS_NOTE = "Final results will be up on Friday at 5 pm EST.";
+const resultsButton = () => [[{ text: "Live results ↗", url: `${siteUrl()}/results` }]];
+
 const company = () => process.env.COMPANY_NAME ?? "the company";
 
 function hasValidSecret(request: Request) {
@@ -58,10 +61,11 @@ async function onMessage(msg: Message) {
     const tripId = payload.startsWith("v_") ? payload.slice(2) : "";
 
     if (await isMember(msg.from.id)) {
-      const text = tripId
-        ? await recordVote(msg.from, tripId)
-        : "You're confirmed. Tap a trip in your team group to vote.";
-      await sendMessage(msg.chat.id, text);
+      if (!tripId) {
+        await sendMessage(msg.chat.id, "You're confirmed. Tap a trip in your team group to vote.");
+        return;
+      }
+      await sendMessage(msg.chat.id, await recordVote(msg.from, tripId), resultsButton());
       return;
     }
     // Carry the trip through the membership question so the vote lands after "Yes".
@@ -130,6 +134,7 @@ async function onCallback(cb: CallbackQuery) {
         chat_id: cb.message.chat.id,
         message_id: cb.message.message_id,
         text: answer,
+        ...(a === "yes" && b && { reply_markup: { inline_keyboard: resultsButton() } }),
       });
     }
     return;
@@ -155,7 +160,8 @@ async function onVote(cb: CallbackQuery, retreatId: string, tripId: string) {
     await answerCallback(cb.id, "This vote is closed.", { alert: true });
     return;
   }
-  await answerCallback(cb.id, await recordVote(cb.from, tripId));
+  // An alert (not a toast) so the voter sees when results are coming.
+  await answerCallback(cb.id, await recordVote(cb.from, tripId), { alert: true });
 }
 
 // Checks the round is open and the trip belongs to it, then casts the vote.
@@ -168,9 +174,11 @@ async function recordVote(from: User, tripId: string) {
   const result = await castVote(retreat.id, from.id, tripId);
   await saveUserName(from.id, from.first_name);
   const place = (await getTrip(tripId))?.place ?? "that trip";
-  return result === "same"
-    ? `You already voted for ${place}.`
-    : result === "changed"
-      ? `Vote changed to ${place}.`
-      : `Vote saved: ${place}.`;
+  const saved =
+    result === "same"
+      ? `You already voted for ${place}.`
+      : result === "changed"
+        ? `Vote changed to ${place}.`
+        : `Vote saved: ${place}.`;
+  return `${saved}\n\n${RESULTS_NOTE}`;
 }
