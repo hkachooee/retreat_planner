@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { Confetti } from "@/components/confetti";
 import { LiveResults } from "@/components/live-results";
 import { Card, Chip, Notice, PageHeader } from "@/components/ui";
+import { WinnerCard } from "@/components/winner-card";
 import { timeLeft } from "@/lib/format";
 import { getResults } from "@/lib/results";
 import { getCurrentRetreat, getTrip, getVoteFor } from "@/lib/votes";
@@ -21,6 +23,7 @@ export default async function ResultsPage() {
   const myVoteId = session ? await getVoteFor(retreat.id, Number(session.user.id)) : null;
   const myTrip = myVoteId ? await getTrip(myVoteId) : null;
   const left = results.open ? timeLeft(results.deadline) : "Voting closed";
+  const winner = !results.open && results.trips[0]?.votes ? results.trips[0] : null;
   const pageUrl = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "retreatplanner.vercel.app"}/results`;
   const shareUrl = `https://t.me/share/url?${new URLSearchParams({
     url: pageUrl,
@@ -29,7 +32,13 @@ export default async function ResultsPage() {
 
   return (
     <>
-      <PageHeader title="Live results" aside={left && <Chip active={results.open}>{left}</Chip>} sub={results.title} />
+      {winner && <Confetti />}
+      <PageHeader
+        title={winner ? "Final results" : "Live results"}
+        aside={left && <Chip active={results.open}>{left}</Chip>}
+        sub={results.title}
+      />
+      {winner && <WinnerCard place={winner.place} votes={winner.votes} voters={results.voters} />}
 
       {myTrip ? (
         <Card highlight className="mb-6 p-4">
