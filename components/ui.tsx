@@ -1,5 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { tripPhoto } from "@/lib/trip-photos";
 
 const buttonBase =
   "flex h-12 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition disabled:opacity-50";
@@ -43,8 +45,16 @@ export function Chip({ children, active = false }: { children: ReactNode; active
   );
 }
 
-// Stand-in for trip photos: a calm tile with the place's initial.
+// The trip's photo, or a calm tile with the place's initial when there isn't one.
 export function PlaceTile({ place, className = "" }: { place: string; className?: string }) {
+  const photo = tripPhoto(place);
+  if (photo) {
+    return (
+      <div className={`relative overflow-hidden rounded-xl bg-tile ${className}`}>
+        <Image src={photo} alt={place} fill sizes="(max-width: 448px) 100vw, 448px" className="object-cover" />
+      </div>
+    );
+  }
   return (
     <div
       aria-hidden

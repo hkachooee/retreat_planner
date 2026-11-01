@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ButtonLink } from "@/components/ui";
@@ -25,9 +26,8 @@ export default async function SignInPage({ searchParams }: PageProps<"/">) {
   return (
     <main className="flex flex-1 flex-col py-6">
       <div className="relative flex aspect-[4/3] items-end overflow-hidden rounded-2xl bg-tile p-5">
-        <div aria-hidden className="absolute -top-10 -right-10 size-48 rounded-full bg-accent/15" />
-        <div aria-hidden className="absolute top-16 right-20 size-20 rounded-full bg-accent/25" />
-        <p className="relative text-sm font-medium text-ink/60">Retreat Planner</p>
+        <Image src="/photos/hero.jpg" alt="" fill priority sizes="(max-width: 448px) 100vw, 448px" className="object-cover" />
+        <p className="relative rounded-full bg-paper/90 px-3 py-1 text-sm font-medium text-ink">Retreat Planner</p>
       </div>
 
       <h1 className="mt-6 text-3xl font-semibold tracking-tight">{retreat?.title ?? "Team retreat"}</h1>
